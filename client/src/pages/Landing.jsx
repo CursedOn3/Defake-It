@@ -38,7 +38,7 @@ function Landing() {
                 <FiArrowRight className="ml-2" />
               </Link>
               <a
-                href="https://github.com"
+                href="https://github.com/CursedOn3/DefakeIt"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center px-8 py-4 bg-primary-800/50 text-white font-semibold rounded-xl hover:bg-primary-800 transition-all duration-300 border border-primary-400/30"
@@ -307,7 +307,7 @@ function Landing() {
             <div>
               <h4 className="font-bold text-white mb-4">Resources</h4>
               <ul className="space-y-2">
-                <li><a href="https://github.com" className="hover:text-white transition-colors">GitHub</a></li>
+                <li><a href="https://github.com/CursedOn3/DefakeIt" className="hover:text-white transition-colors">GitHub</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">API</a></li>
               </ul>

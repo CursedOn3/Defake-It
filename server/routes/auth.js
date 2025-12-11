@@ -9,13 +9,15 @@ const {
     updatePassword,
     forgotPassword,
     resetPassword,
-    verifyResetToken
+    verifyResetToken,
+    googleAuth
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
 // Public routes
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/google', googleAuth);
 router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:token', verifyResetToken);
 router.put('/reset-password/:token', resetPassword);

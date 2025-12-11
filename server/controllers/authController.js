@@ -480,6 +480,90 @@ const verifyResetToken = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Google OAuth login/signup
+ * @route   POST /api/auth/google
+ * @access  Public
+ */
+const googleAuth = async (req, res) => {
+    try {
+        const { credential } = req.body;
+
+        if (!credential) {
+            return res.status(400).json({
+                success: false,
+                error: 'Google credential is required'
+            });
+        }
+
+        // Verify Google token
+        const { OAuth2Client } = require('google-auth-library');
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+        let payload;
+        try {
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID
+            });
+            payload = ticket.getPayload();
+        } catch (error) {
+            console.error('Google token verification failed:', error);
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid Google token'
+            });
+        }
+
+        const { sub: googleId, email, name, picture } = payload;
+
+        // Check if user exists with this Google ID
+        let user = await User.findOne({ googleId });
+
+        if (!user) {
+            // Check if user exists with this email (might have signed up with email/password)
+            user = await User.findOne({ email: email.toLowerCase() });
+
+            if (user) {
+                // Link Google account to existing user
+                user.googleId = googleId;
+                user.avatar = user.avatar || picture;
+                if (user.authProvider === 'local') {
+                    // Keep as local since they have a password
+                }
+                await user.save();
+            } else {
+                // Create new user
+                user = await User.create({
+                    name,
+                    email: email.toLowerCase(),
+                    googleId,
+                    authProvider: 'google',
+                    avatar: picture,
+                    isVerified: true // Google accounts are already verified
+                });
+                console.log(`✅ New Google user registered: ${user.email}`);
+            }
+        }
+
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        console.log(`✅ Google login: ${user.email}`);
+
+        // Send token response
+        sendTokenResponse(user, 200, res);
+
+    } catch (error) {
+        console.error('Google auth error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Google authentication failed'
+        });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -489,5 +573,6 @@ module.exports = {
     updatePassword,
     forgotPassword,
     resetPassword,
-    verifyResetToken
+    verifyResetToken,
+    googleAuth
 };

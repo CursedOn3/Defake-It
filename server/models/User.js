@@ -22,9 +22,18 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Please provide a password'],
         minlength: [6, 'Password must be at least 6 characters'],
         select: false // Don't include password in queries by default
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true // Allows multiple null values
+    },
+    authProvider: {
+        type: String,
+        enum: ['local', 'google'],
+        default: 'local'
     },
     avatar: {
         type: String,
@@ -54,8 +63,8 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-    // Only hash if password is modified
-    if (!this.isModified('password')) {
+    // Only hash if password is modified and exists
+    if (!this.isModified('password') || !this.password) {
         return next();
     }
     
