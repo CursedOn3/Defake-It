@@ -11,6 +11,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) web application for detecti
 
 - **Image Upload**: Drag-and-drop or click to upload images
 - **AI Detection**: Advanced deep learning model for deepfake detection
+                    https://github.com/CursedOn3/DeepFake-Detection-for-Image
 - **Confidence Scores**: Detailed confidence metrics for each prediction
 - **Detection History**: Track and review past analyses
 - **Statistics Dashboard**: View aggregate detection stats
