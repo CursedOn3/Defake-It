@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const {
     signup,
+    verifyOTP,
+    resendOTP,
     login,
     logout,
     getMe,
@@ -16,6 +18,8 @@ const { protect } = require('../middleware/auth');
 
 // Public routes
 router.post('/signup', signup);
+router.post('/verify-otp', verifyOTP);
+router.post('/resend-otp', resendOTP);
 router.post('/login', login);
 router.post('/google', googleAuth);
 router.post('/forgot-password', forgotPassword);

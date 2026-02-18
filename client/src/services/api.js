@@ -42,9 +42,10 @@ api.interceptors.response.use(
 );
 
 // Upload and detect image
-export const detectImage = async (file, onProgress) => {
+export const detectImage = async (file, model = 'deepfake_detector', onProgress) => {
   const formData = new FormData();
   formData.append('image', file);
+  formData.append('model', model);
 
   try {
     const response = await api.post('/detect', formData, {
@@ -68,15 +69,28 @@ export const detectImage = async (file, onProgress) => {
 };
 
 // Get detection history
-export const getHistory = async (page = 1, limit = 10) => {
+export const getHistory = async (page = 1, limit = 10, type = null) => {
   try {
-    const response = await api.get('/history', {
-      params: { page, limit },
-    });
+    const params = { page, limit };
+    if (type && type !== 'all') {
+      params.type = type;
+    }
+    const response = await api.get('/history', { params });
     return response.data;
   } catch (error) {
     console.error('History fetch error:', error);
     throw error.response?.data || { error: 'Failed to fetch history' };
+  }
+};
+
+// Get statistics
+export const getStats = async () => {
+  try {
+    const response = await api.get('/history/stats');
+    return response.data;
+  } catch (error) {
+    console.error('Stats fetch error:', error);
+    throw error.response?.data || { error: 'Failed to fetch statistics' };
   }
 };
 
@@ -99,17 +113,6 @@ export const deleteDetection = async (id) => {
   } catch (error) {
     console.error('Delete error:', error);
     throw error.response?.data || { error: 'Failed to delete detection' };
-  }
-};
-
-// Get detection statistics
-export const getStats = async () => {
-  try {
-    const response = await api.get('/history/stats');
-    return response.data;
-  } catch (error) {
-    console.error('Stats fetch error:', error);
-    throw error.response?.data || { error: 'Failed to fetch statistics' };
   }
 };
 

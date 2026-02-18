@@ -11,12 +11,13 @@ import About from './pages/About';
 import Result from './pages/Result';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import VerifyOTP from './pages/VerifyOTP';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
 function AppContent() {
   const location = useLocation();
-  const hideNavFooter = ['/', '/login', '/signup', '/forgot-password'].includes(location.pathname) || 
+  const hideNavFooter = ['/', '/login', '/signup', '/verify-otp', '/forgot-password'].includes(location.pathname) || 
                         location.pathname.startsWith('/reset-password');
 
   return (
@@ -27,6 +28,7 @@ function AppContent() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/detect" element={

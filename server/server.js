@@ -9,6 +9,7 @@ require('dotenv').config();
 const detectRoutes = require('./routes/detect');
 const historyRoutes = require('./routes/history');
 const authRoutes = require('./routes/auth');
+const { initializeEmailService, getEmailServiceStatus, shutdownEmailService } = require('./utils/emailService');
 
 const app = express();
 
@@ -51,7 +52,17 @@ app.use('/api/history', historyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'DeepFake Detection API is running' });
+    const emailStatus = getEmailServiceStatus();
+    res.json({ 
+        status: 'ok', 
+        message: 'DeepFake Detection API is running',
+        services: {
+            api: 'operational',
+            database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+            email: emailStatus.configured ? 'configured' : 'not configured'
+        },
+        emailStats: emailStatus.configured ? emailStatus.stats : null
+    });
 });
 
 // Serve static files in production
@@ -75,17 +86,23 @@ app.use((err, req, res, next) => {
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/deepfake-detector';
 
 mongoose.connect(MONGODB_URI)
-    .then(() => {
+    .then(async () => {
         console.log('✅ Connected to MongoDB');
+        
+        // Initialize email service after successful DB connection
+        await initializeEmailService();
     })
     .catch((err) => {
         console.log('⚠️  MongoDB connection failed:', err.message);
         console.log('📌 App will run without database (history will not be saved)');
+        
+        // Still try to initialize email service even if DB fails
+        initializeEmailService();
     });
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║        🔍 DeepFake Detection API Server                    ║
@@ -95,6 +112,31 @@ app.listen(PORT, () => {
 ║  🗄️  Database: MongoDB                                      ║
 ╚════════════════════════════════════════════════════════════╝
     `);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('\n⚠️  SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+        console.log('🔌 HTTP server closed');
+        shutdownEmailService();
+        mongoose.connection.close(false, () => {
+            console.log('🗄️  MongoDB connection closed');
+            process.exit(0);
+        });
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('\n⚠️  SIGINT signal received: closing HTTP server');
+    server.close(() => {
+        console.log('🔌 HTTP server closed');
+        shutdownEmailService();
+        mongoose.connection.close(false, () => {
+            console.log('🗄️  MongoDB connection closed');
+            process.exit(0);
+        });
+    });
 });
 
 module.exports = app;

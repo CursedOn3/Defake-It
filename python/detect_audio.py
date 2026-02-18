@@ -8,6 +8,16 @@ import json
 import os
 import time
 from pathlib import Path
+import warnings
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+# Suppress TensorFlow logging
+import logging
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
 # Add the audio-deepfake-detection directory to the Python path
 AUDIO_DETECTION_PATH = Path(r"D:\Final Year Project\audio-deepfake-detection")
@@ -71,9 +81,12 @@ def detect_audio(audio_path):
         return output
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         return {
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'error_details': error_details
         }
 
 if __name__ == '__main__':

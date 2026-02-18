@@ -2,13 +2,41 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import { detectImage } from '../services/api';
-import { FiShield, FiAlertCircle } from 'react-icons/fi';
+import { FiShield, FiAlertCircle, FiCpu } from 'react-icons/fi';
+
+const AVAILABLE_MODELS = [
+  {
+    id: 'deepfake_detector',
+    name: 'DeepFake Detector (Default)',
+    description: 'Standard model with good accuracy',
+    accuracy: '94%'
+  },
+  {
+    id: 'efficientnet_b0',
+    name: 'EfficientNet B0',
+    description: 'Fast and lightweight model',
+    accuracy: '92%'
+  },
+  {
+    id: 'resnet50',
+    name: 'ResNet50',
+    description: 'Deep residual network',
+    accuracy: '93%'
+  },
+  {
+    id: 'xception',
+    name: 'Xception',
+    description: 'High accuracy model',
+    accuracy: '95%'
+  }
+];
 
 function Home() {
   const navigate = useNavigate();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [selectedModel, setSelectedModel] = useState('deepfake_detector');
 
   const handleUpload = async (file) => {
     if (!file) return;
@@ -21,7 +49,7 @@ function Home() {
     const imagePreview = URL.createObjectURL(file);
 
     try {
-      const response = await detectImage(file, (prog) => {
+      const response = await detectImage(file, selectedModel, (prog) => {
         setProgress(prog);
       });
 
@@ -31,6 +59,7 @@ function Home() {
         rawScore: response.data.rawScore,
         processingTime: response.data.processingTime,
         originalName: file.name,
+        modelUsed: response.data.modelUsed || selectedModel,
       };
 
       // Navigate to result page with data
@@ -69,6 +98,38 @@ function Home() {
 
         {/* Main Content */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Model Selection */}
+          <div className="mb-6">
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-3">
+              <FiCpu className="text-primary-600" />
+              <span>Select Detection Model</span>
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {AVAILABLE_MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  onClick={() => setSelectedModel(model.id)}
+                  disabled={isAnalyzing}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    selectedModel === model.id
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  } ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <h3 className="font-semibold text-gray-800 text-sm">
+                      {model.name}
+                    </h3>
+                    <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
+                      {model.accuracy}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600">{model.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Image Uploader */}
           <ImageUploader
             onUpload={handleUpload}

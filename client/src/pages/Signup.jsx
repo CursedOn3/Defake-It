@@ -131,11 +131,16 @@ const Signup = () => {
             const response = await api.post('/auth/signup', formData);
             
             if (response.data.success) {
-                // Use AuthContext login method
-                login(response.data.token, response.data.user);
-                
-                // Redirect to detect page
-                navigate('/detect');
+                // If OTP verification is required, redirect to verify page
+                if (response.data.requiresVerification) {
+                    navigate('/verify-otp', { 
+                        state: { email: response.data.email }
+                    });
+                } else {
+                    // Old behavior: direct login (for backward compatibility)
+                    login(response.data.token, response.data.user);
+                    navigate('/detect');
+                }
             }
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');

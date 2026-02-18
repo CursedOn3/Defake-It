@@ -49,6 +49,8 @@ const userSchema = new mongoose.Schema({
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    verificationOTP: String,
+    verificationOTPExpire: Date,
     createdAt: {
         type: Date,
         default: Date.now
@@ -94,6 +96,23 @@ userSchema.methods.getResetPasswordToken = function() {
     this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
 
     return resetToken;
+};
+
+// Generate verification OTP
+userSchema.methods.generateVerificationOTP = function() {
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash OTP and set to verificationOTP field
+    this.verificationOTP = crypto
+        .createHash('sha256')
+        .update(otp)
+        .digest('hex');
+
+    // Set expire (10 minutes)
+    this.verificationOTPExpire = Date.now() + 10 * 60 * 1000;
+
+    return otp;
 };
 
 // Method to get public profile (without sensitive data)

@@ -1,13 +1,15 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { convertToWav } = require('./audioConverter');
 
 /**
  * Run DeepFake detection on an image using Python model
  * @param {string} imagePath - Path to the image file
+ * @param {string} modelName - Name of the model to use (optional)
  * @returns {Promise<object>} Detection result
  */
-const runDetection = (imagePath) => {
+const runDetection = (imagePath, modelName = 'deepfake_detector') => {
     return new Promise((resolve, reject) => {
         const startTime = Date.now();
         
@@ -18,20 +20,26 @@ const runDetection = (imagePath) => {
         // Python script path
         const pythonScript = path.join(__dirname, '..', '..', 'python', 'detect.py');
         
-        // Model path
+        // Model path - support multiple models
         const modelPath = process.env.MODEL_PATH || 
-            path.join(detectionProjectPath, 'models', 'deepfake_detector.h5');
+            path.join(detectionProjectPath, 'models', `${modelName}.h5`);
         
         // Check if model exists
         if (!fs.existsSync(modelPath)) {
-            return reject(new Error(`Model not found at: ${modelPath}`));
+            console.warn(`⚠️ Model not found at: ${modelPath}, using default`);
+            // Fallback to default model
+            const defaultModelPath = path.join(detectionProjectPath, 'models', 'deepfake_detector.h5');
+            if (!fs.existsSync(defaultModelPath)) {
+                return reject(new Error(`No models found. Checked: ${modelPath} and ${defaultModelPath}`));
+            }
         }
         
         // Python command
         const pythonPath = process.env.PYTHON_PATH || 'python';
         
         console.log(`🔍 Running detection on: ${imagePath}`);
-        console.log(`📦 Using model: ${modelPath}`);
+        console.log(`🤖 Using model: ${modelName}`);
+        console.log(`📦 Model path: ${modelPath}`);
         
         // Spawn Python process
         const pythonProcess = spawn(pythonPath, [
@@ -64,6 +72,7 @@ const runDetection = (imagePath) => {
                 // Parse JSON output from Python
                 const result = JSON.parse(output.trim());
                 result.processingTime = processingTime;
+                result.modelUsed = modelName;
                 resolve(result);
             } catch (e) {
                 console.error('Failed to parse Python output:', output);
@@ -157,63 +166,90 @@ const runVideoDetection = (videoPath) => {
  * @param {string} audioPath - Path to the audio file
  * @returns {Promise<object>} Detection result
  */
-const runAudioDetection = (audioPath) => {
-    return new Promise((resolve, reject) => {
+const runAudioDetection = async (audioPath) => {
+    try {
         const startTime = Date.now();
+        
+        // Convert audio to WAV format (required for Python librosa)
+        console.log(`🔄 Converting audio to WAV format...`);
+        const wavPath = await convertToWav(audioPath);
+        console.log(`✅ Audio converted: ${path.basename(wavPath)}`);
         
         // Python script path for audio detection
         const pythonScript = path.join(__dirname, '..', '..', 'python', 'detect_audio.py');
         
         // Check if script exists
         if (!fs.existsSync(pythonScript)) {
-            return reject(new Error(`Audio detection script not found at: ${pythonScript}`));
+            throw new Error(`Audio detection script not found at: ${pythonScript}`);
         }
         
         // Python command
         const pythonPath = process.env.PYTHON_PATH || 'python';
         
-        console.log(`🎵 Running audio detection on: ${audioPath}`);
+        console.log(`🎵 Running audio detection on: ${path.basename(wavPath)}`);
         
-        // Spawn Python process
-        const pythonProcess = spawn(pythonPath, [
-            pythonScript,
-            audioPath
-        ]);
-        
-        let output = '';
-        let errorOutput = '';
-        
-        pythonProcess.stdout.on('data', (data) => {
-            output += data.toString();
-        });
-        
-        pythonProcess.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-        });
-        
-        pythonProcess.on('close', (code) => {
-            const processingTime = Date.now() - startTime;
+        return new Promise((resolve, reject) => {
+            // Spawn Python process
+            const pythonProcess = spawn(pythonPath, [
+                pythonScript,
+                wavPath
+            ]);
             
-            if (code !== 0) {
-                console.error('Python error:', errorOutput);
-                return reject(new Error(`Audio detection failed: ${errorOutput || 'Unknown error'}`));
-            }
+            let output = '';
+            let errorOutput = '';
             
-            try {
-                // Parse JSON output from Python
-                const result = JSON.parse(output.trim());
-                result.processingTime = result.processingTime || processingTime;
-                resolve(result);
-            } catch (e) {
-                console.error('Failed to parse Python output:', output);
-                reject(new Error('Failed to parse audio detection result'));
-            }
+            pythonProcess.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+            
+            pythonProcess.stderr.on('data', (data) => {
+                errorOutput += data.toString();
+            });
+            
+            pythonProcess.on('close', (code) => {
+                const processingTime = Date.now() - startTime;
+                
+                // Clean up WAV file after processing
+                if (fs.existsSync(wavPath)) {
+                    try {
+                        fs.unlinkSync(wavPath);
+                        console.log('🗑️  Cleaned up temporary WAV file');
+                    } catch (err) {
+                        console.warn('⚠️  Could not delete WAV file:', err.message);
+                    }
+                }
+                
+                if (code !== 0) {
+                    console.error('Python error:', errorOutput);
+                    return reject(new Error(`Audio detection failed: ${errorOutput || 'Unknown error'}`));
+                }
+                
+                try {
+                    // Parse JSON output from Python
+                    const result = JSON.parse(output.trim());
+                    result.processingTime = result.processingTime || processingTime;
+                    resolve(result);
+                } catch (e) {
+                    console.error('Failed to parse Python output:', output);
+                    reject(new Error('Failed to parse audio detection result'));
+                }
+            });
+            
+            pythonProcess.on('error', (err) => {
+                // Clean up WAV file on error
+                if (fs.existsSync(wavPath)) {
+                    try {
+                        fs.unlinkSync(wavPath);
+                    } catch (cleanupErr) {
+                        // Ignore cleanup errors
+                    }
+                }
+                reject(new Error(`Failed to start Python process: ${err.message}`));
+            });
         });
-        
-        pythonProcess.on('error', (err) => {
-            reject(new Error(`Failed to start Python process: ${err.message}`));
-        });
-    });
+    } catch (error) {
+        throw new Error(`Audio processing failed: ${error.message}`);
+    }
 };
 
 module.exports = { runDetection, runVideoDetection, runAudioDetection };

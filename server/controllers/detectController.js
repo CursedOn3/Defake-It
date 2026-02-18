@@ -20,11 +20,13 @@ const detectImage = async (req, res) => {
         const imagePath = req.file.path;
         const originalName = req.file.originalname;
         const fileSize = req.file.size;
+        const selectedModel = req.body.model || 'deepfake_detector';
 
         console.log(`📤 Processing image: ${originalName}`);
+        console.log(`🤖 Using model: ${selectedModel}`);
 
-        // Run detection
-        const result = await runDetection(imagePath);
+        // Run detection with selected model
+        const result = await runDetection(imagePath, selectedModel);
 
         // Upload to Cloudflare R2 if configured
         let imageUrl = `/uploads/${req.file.filename}`;
@@ -62,7 +64,7 @@ const detectImage = async (req, res) => {
                 storageType: storageType,
                 imageSize: fileSize,
                 processingTime: result.processingTime,
-                modelUsed: result.model || 'deepfake_detector'
+                modelUsed: selectedModel
             });
             savedDetection = await detection.save();
         } catch (dbError) {
@@ -84,6 +86,7 @@ const detectImage = async (req, res) => {
                 imagePath: imageUrl, // For backward compatibility
                 storageType: storageType,
                 processingTime: result.processingTime,
+                modelUsed: selectedModel,
                 message: result.prediction === 'fake' 
                     ? '⚠️ This image appears to be a DEEPFAKE!' 
                     : '✅ This image appears to be AUTHENTIC'
