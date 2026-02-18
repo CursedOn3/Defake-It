@@ -13,6 +13,11 @@ from pathlib import Path
 AUDIO_DETECTION_PATH = Path(r"D:\Final Year Project\audio-deepfake-detection")
 sys.path.insert(0, str(AUDIO_DETECTION_PATH))
 
+# Import custom model classes BEFORE loading any models
+# This ensures they are registered with Keras
+from src.models.hybrid_model import HybridDeepfakeDetector
+from src.models.attention import MultiHeadAttention
+
 from src.inference.detector import DeepfakeDetector
 
 # Model path
